@@ -1,3 +1,4 @@
+import os
 import requests
 
 # Função para gerar um e-mail temporário
