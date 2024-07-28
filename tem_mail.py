@@ -1,25 +1,34 @@
+import os
 import requests
+import json
 
-# Função para gerar e-mail temporário
+# Função para gerar um e-mail temporário
 def gerar_email_temporario():
     print("Gerando e-mail temporário...")
     url = "https://api.mail.tm/accounts"
-    headers = {
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "address": f"{os.urandom(6).hex()}@{requests.get('https://api.mail.tm/domains').json()[0]['domain']}",
-        "password": "password"
-    }
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        email_info = response.json()
-        email_address = email_info.get('address')
-        print(f"E-mail temporário gerado com sucesso: {email_address}")
-        return email_address, payload['password']
-    except requests.exceptions.RequestException as e:
-        print(f"Erro ao gerar e-mail: {e}")
+    domain_response = requests.get("https://api.mail.tm/domains")
+    
+    if domain_response.status_code == 200:
+        domain = domain_response.json()[0]['domain']
+        email_address = f"{os.urandom(6).hex()}@{domain}"
+        payload = {
+            "address": email_address,
+            "password": "password123"
+        }
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, data=json.dumps(payload))
+            response.raise_for_status()
+            print(f"E-mail temporário gerado com sucesso: {email_address}")
+            return email_address, payload['password']
+        except requests.exceptions.RequestException as e:
+            print(f"Erro ao gerar e-mail: {e}")
+            return None, None
+    else:
+        print("Erro ao obter o domínio para o e-mail temporário.")
         return None, None
 
 # Função para obter token
@@ -32,8 +41,9 @@ def obter_token(email_address, password):
         "address": email_address,
         "password": password
     }
+    
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
         response.raise_for_status()
         token_info = response.json()
         return token_info.get('token')
@@ -48,6 +58,7 @@ def verificar_caixa_entrada(token):
     headers = {
         "Authorization": f"Bearer {token}"
     }
+    
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
@@ -68,6 +79,7 @@ def ler_email_especifico(token, email_id):
     headers = {
         "Authorization": f"Bearer {token}"
     }
+    
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
@@ -121,4 +133,3 @@ def menu():
 
 if __name__ == "__main__":
     menu()
-
