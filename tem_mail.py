@@ -16,7 +16,7 @@ with open(key_file, "r") as file:
 
 def gerar_email_temporario():
     print(Fore.YELLOW + "Gerando e-mail temporário...")
-    url = "https://api.temp-mail.org/request/domains/format/json"  # Exemplo de URL da API (substitua pela URL correta)
+    url = "https://api.mail.tm/accounts"  # Exemplo de URL da API (substitua pela URL correta)
     headers = {
         "Authorization": f"Bearer {api_key}"
     }
