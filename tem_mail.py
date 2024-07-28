@@ -1,93 +1,46 @@
-import os
 import requests
-import json
 
 # Função para gerar um e-mail temporário
 def gerar_email_temporario():
     print("Gerando e-mail temporário...")
-    url = "https://api.mail.tm/accounts"
-    domain_response = requests.get("https://api.mail.tm/domains")
-    
-    if domain_response.status_code == 200:
-        domain = domain_response.json()[0]['domain']
-        email_address = f"{os.urandom(6).hex()}@{domain}"
-        payload = {
-            "address": email_address,
-            "password": "password123"
-        }
-        headers = {
-            "Content-Type": "application/json"
-        }
-        
-        try:
-            response = requests.post(url, headers=headers, data=json.dumps(payload))
-            response.raise_for_status()
-            print(f"E-mail temporário gerado com sucesso: {email_address}")
-            return email_address, payload['password']
-        except requests.exceptions.RequestException as e:
-            print(f"Erro ao gerar e-mail: {e}")
-            return None, None
-    else:
-        print("Erro ao obter o domínio para o e-mail temporário.")
-        return None, None
-
-# Função para obter token
-def obter_token(email_address, password):
-    url = "https://api.mail.tm/token"
-    headers = {
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "address": email_address,
-        "password": password
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
-        response.raise_for_status()
-        token_info = response.json()
-        return token_info.get('token')
-    except requests.exceptions.RequestException as e:
-        print(f"Erro ao obter token: {e}")
-        return None
+    domain = "mailinator.com"
+    email_address = f"{os.urandom(6).hex()}@{domain}"
+    print(f"E-mail temporário gerado com sucesso: {email_address}")
+    return email_address
 
 # Função para verificar caixa de entrada
-def verificar_caixa_entrada(token):
+def verificar_caixa_entrada(email_address):
     print("Verificando a caixa de entrada...")
-    url = "https://api.mail.tm/messages"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    
+    email_username = email_address.split('@')[0]
+    url = f"https://www.mailinator.com/api/v2/domains/public/inboxes/{email_username}"
+
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url)
         response.raise_for_status()
-        emails = response.json().get('hydra:member', [])
+        emails = response.json().get('messages', [])
         if emails:
             print("E-mails na caixa de entrada:")
             for email in emails:
-                print(f"ID: {email['id']}, Assunto: {email['subject']}, Remetente: {email['from']['address']}")
+                print(f"ID: {email['_id']}, Assunto: {email['subject']}, De: {email['from']}")
         else:
             print("Nenhum e-mail encontrado.")
     except requests.exceptions.RequestException as e:
         print(f"Erro ao verificar caixa de entrada: {e}")
 
 # Função para ler e-mail específico
-def ler_email_especifico(token, email_id):
+def ler_email_especifico(email_address, email_id):
     print(f"Lendo e-mail ID {email_id}...")
-    url = f"https://api.mail.tm/messages/{email_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    
+    email_username = email_address.split('@')[0]
+    url = f"https://www.mailinator.com/api/v2/domains/public/inboxes/{email_username}/messages/{email_id}"
+
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url)
         response.raise_for_status()
         email = response.json()
         if email:
             print(f"Assunto: {email.get('subject')}")
-            print(f"De: {email.get('from').get('address')}")
-            print(f"Corpo: {email.get('text')}")
+            print(f"De: {email.get('from')}")
+            print(f"Corpo: {email.get('parts')[0].get('body')}")
         else:
             print("E-mail não encontrado.")
     except requests.exceptions.RequestException as e:
@@ -95,8 +48,7 @@ def ler_email_especifico(token, email_id):
 
 # Menu principal
 def menu():
-    email_address, password = None, None
-    token = None
+    email_address = None
     while True:
         print("========================================")
         print("Menu: Gerador👑")
@@ -108,20 +60,18 @@ def menu():
         escolha = input("Escolha uma opção: ")
         
         if escolha == '1':
-            email_address, password = gerar_email_temporario()
-            if email_address:
-                token = obter_token(email_address, password)
-                input("Pressione Enter para voltar ao menu...")
+            email_address = gerar_email_temporario()
+            input("Pressione Enter para voltar ao menu...")
         elif escolha == '2':
-            if token:
-                verificar_caixa_entrada(token)
+            if email_address:
+                verificar_caixa_entrada(email_address)
             else:
                 print("Por favor, gere um e-mail temporário primeiro.")
             input("Pressione Enter para voltar ao menu...")
         elif escolha == '3':
-            if token:
+            if email_address:
                 email_id = input("Digite o ID do e-mail para ler: ")
-                ler_email_especifico(token, email_id)
+                ler_email_especifico(email_address, email_id)
             else:
                 print("Por favor, gere um e-mail temporário primeiro.")
             input("Pressione Enter para voltar ao menu...")
@@ -133,3 +83,4 @@ def menu():
 
 if __name__ == "__main__":
     menu()
+
