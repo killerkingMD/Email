@@ -1,66 +1,124 @@
-import os
 import requests
-import colorama
-from colorama import Fore, Style
 
-colorama.init(autoreset=True)
-
-# Verifique se a chave API existe
-key_file = "api_key.txt"
-if not os.path.isfile(key_file):
-    print(Fore.RED + "Chave API não encontrada. Por favor, execute o script de instalação novamente.")
-    exit(1)
-
-with open(key_file, "r") as file:
-    api_key = file.read().strip()
-
+# Função para gerar e-mail temporário
 def gerar_email_temporario():
-    print(Fore.YELLOW + "Gerando e-mail temporário...")
-    url = "https://api.mail.tm/accounts"  # Exemplo de URL da API (substitua pela URL correta)
+    print("Gerando e-mail temporário...")
+    url = "https://api.mail.tm/accounts"
     headers = {
-        "Authorization": f"Bearer {api_key}"
+        "Content-Type": "application/json"
     }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
+    payload = {
+        "address": f"{os.urandom(6).hex()}@{requests.get('https://api.mail.tm/domains').json()[0]['domain']}",
+        "password": "password"
+    }
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        email_info = response.json()
+        email_address = email_info.get('address')
+        print(f"E-mail temporário gerado com sucesso: {email_address}")
+        return email_address, payload['password']
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao gerar e-mail: {e}")
+        return None, None
+
+# Função para obter token
+def obter_token(email_address, password):
+    url = "https://api.mail.tm/token"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "address": email_address,
+        "password": password
+    }
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        token_info = response.json()
+        return token_info.get('token')
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao obter token: {e}")
+        return None
+
+# Função para verificar caixa de entrada
+def verificar_caixa_entrada(token):
+    print("Verificando a caixa de entrada...")
+    url = "https://api.mail.tm/messages"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        emails = response.json().get('hydra:member', [])
+        if emails:
+            print("E-mails na caixa de entrada:")
+            for email in emails:
+                print(f"ID: {email['id']}, Assunto: {email['subject']}, Remetente: {email['from']['address']}")
+        else:
+            print("Nenhum e-mail encontrado.")
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao verificar caixa de entrada: {e}")
+
+# Função para ler e-mail específico
+def ler_email_especifico(token, email_id):
+    print(f"Lendo e-mail ID {email_id}...")
+    url = f"https://api.mail.tm/messages/{email_id}"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
         email = response.json()
-        print(Fore.GREEN + f"E-mail temporário gerado com sucesso: {email}")
-    else:
-        print(Fore.RED + "Erro ao gerar e-mail temporário. Tente novamente mais tarde.")
+        if email:
+            print(f"Assunto: {email.get('subject')}")
+            print(f"De: {email.get('from').get('address')}")
+            print(f"Corpo: {email.get('text')}")
+        else:
+            print("E-mail não encontrado.")
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao ler e-mail: {e}")
 
-def verificar_caixa_entrada():
-    print(Fore.YELLOW + "Verificando a caixa de entrada...")
-    # Lógica para verificar a caixa de entrada
-    pass
-
-def ler_email_especifico():
-    print(Fore.YELLOW + "Lendo um e-mail específico...")
-    # Lógica para ler um e-mail específico
-    pass
-
+# Menu principal
 def menu():
+    email_address, password = None, None
+    token = None
     while True:
-        print(Fore.CYAN + "========================================")
-        print(Fore.CYAN + "Menu: Gerador👑")
-        print(Fore.CYAN + "========================================")
-        print(Fore.CYAN + "█▀▀▀▀▀▀▀▀           ▀▀▀▀▀▀▀▀█")
-        print(Fore.CYAN + "1. Gerar um e-mail temporário")
-        print(Fore.CYAN + "2. Verificar a caixa de entrada")
-        print(Fore.CYAN + "3. Ler um e-mail específico")
-        print(Fore.CYAN + "4. Sair")
-        print(Fore.CYAN + "█▄▄▄▄▄▄▄▄           ▄▄▄▄▄▄▄▄█")
-        escolha = input(Fore.YELLOW + "Escolha uma opção: ")
+        print("========================================")
+        print("Menu: Gerador👑")
+        print("========================================")
+        print("1. Gerar um e-mail temporário")
+        print("2. Verificar a caixa de entrada")
+        print("3. Ler um e-mail específico")
+        print("4. Sair")
+        escolha = input("Escolha uma opção: ")
         
         if escolha == '1':
-            gerar_email_temporario()
+            email_address, password = gerar_email_temporario()
+            if email_address:
+                token = obter_token(email_address, password)
+                input("Pressione Enter para voltar ao menu...")
         elif escolha == '2':
-            verificar_caixa_entrada()
+            if token:
+                verificar_caixa_entrada(token)
+            else:
+                print("Por favor, gere um e-mail temporário primeiro.")
+            input("Pressione Enter para voltar ao menu...")
         elif escolha == '3':
-            ler_email_especifico()
+            if token:
+                email_id = input("Digite o ID do e-mail para ler: ")
+                ler_email_especifico(token, email_id)
+            else:
+                print("Por favor, gere um e-mail temporário primeiro.")
+            input("Pressione Enter para voltar ao menu...")
         elif escolha == '4':
-            print(Fore.GREEN + "Saindo...")
+            print("Saindo...")
             break
         else:
-            print(Fore.RED + "Opção inválida. Tente novamente.")
+            print("Opção inválida. Tente novamente.")
 
 if __name__ == "__main__":
     menu()
+
