@@ -76,7 +76,7 @@ echo -e "\e[38;5;196m========================================\e[0m"
 echo -e "\e[38;5;202mGuia Intuitiva de Uso do Script\e[0m"
 echo -e "\e[38;5;208m========================================\e[0m"
 echo
-echo -e "\e[38;5;214m1. para iniciar o Menu do script, execute o seguinte comando:\e[0m"
+echo -e "\e[38;5;214m1. Para iniciar o Menu do script, execute o seguinte comando:\e[0m"
 echo -e "\e[38;5;220m   python $SCRIPT_NAME\e[0m"
 echo
 echo -e "\e[38;5;226m2. No menu apresentado, escolha a opção 1 para gerar um e-mail temporário.\e[0m"
